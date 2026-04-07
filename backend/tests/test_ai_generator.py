@@ -13,7 +13,9 @@ def make_text_response(text="answer"):
     return response
 
 
-def make_tool_use_response(tool_name="search_course_content", tool_id="tool_1", tool_input=None):
+def make_tool_use_response(
+    tool_name="search_course_content", tool_id="tool_1", tool_input=None
+):
     # spec excludes "text" so hasattr(block, "text") correctly returns False
     block = MagicMock(spec=["type", "name", "id", "input"])
     block.type = "tool_use"
@@ -44,8 +46,12 @@ class TestNoToolUse:
         gen = make_generator()
         text_resp = make_text_response("direct answer")
 
-        with patch.object(gen.client.messages, "create", return_value=text_resp) as mock_create:
-            result = gen.generate_response("what is python?", tools=TOOLS, tool_manager=make_tool_manager())
+        with patch.object(
+            gen.client.messages, "create", return_value=text_resp
+        ) as mock_create:
+            result = gen.generate_response(
+                "what is python?", tools=TOOLS, tool_manager=make_tool_manager()
+            )
 
         assert result == "direct answer"
         assert mock_create.call_count == 1
@@ -54,7 +60,9 @@ class TestNoToolUse:
         gen = make_generator()
         tm = make_tool_manager()
 
-        with patch.object(gen.client.messages, "create", return_value=make_text_response()):
+        with patch.object(
+            gen.client.messages, "create", return_value=make_text_response()
+        ):
             gen.generate_response("what is python?", tools=TOOLS, tool_manager=tm)
 
         tm.execute_tool.assert_not_called()
@@ -65,9 +73,14 @@ class TestSingleToolRound:
         gen = make_generator()
         tm = make_tool_manager("course info")
 
-        with patch.object(gen.client.messages, "create",
-                          side_effect=[make_tool_use_response(), make_text_response("final answer")]) as mock_create:
-            result = gen.generate_response("find course X", tools=TOOLS, tool_manager=tm)
+        with patch.object(
+            gen.client.messages,
+            "create",
+            side_effect=[make_tool_use_response(), make_text_response("final answer")],
+        ) as mock_create:
+            result = gen.generate_response(
+                "find course X", tools=TOOLS, tool_manager=tm
+            )
 
         assert result == "final answer"
         assert mock_create.call_count == 2
@@ -77,21 +90,35 @@ class TestSingleToolRound:
         gen = make_generator()
         tm = make_tool_manager()
 
-        with patch.object(gen.client.messages, "create",
-                          side_effect=[make_tool_use_response(tool_name="search_course_content",
-                                                               tool_input={"query": "python basics"}),
-                                       make_text_response()]):
+        with patch.object(
+            gen.client.messages,
+            "create",
+            side_effect=[
+                make_tool_use_response(
+                    tool_name="search_course_content",
+                    tool_input={"query": "python basics"},
+                ),
+                make_text_response(),
+            ],
+        ):
             gen.generate_response("find python", tools=TOOLS, tool_manager=tm)
 
-        tm.execute_tool.assert_called_once_with("search_course_content", query="python basics")
+        tm.execute_tool.assert_called_once_with(
+            "search_course_content", query="python basics"
+        )
 
     def test_second_api_call_includes_tool_results(self):
         gen = make_generator()
         tm = make_tool_manager("search results")
 
-        with patch.object(gen.client.messages, "create",
-                          side_effect=[make_tool_use_response(tool_id="abc123"),
-                                       make_text_response()]) as mock_create:
+        with patch.object(
+            gen.client.messages,
+            "create",
+            side_effect=[
+                make_tool_use_response(tool_id="abc123"),
+                make_text_response(),
+            ],
+        ) as mock_create:
             gen.generate_response("find course", tools=TOOLS, tool_manager=tm)
 
         second_call_messages = mock_create.call_args_list[1].kwargs["messages"]
@@ -110,11 +137,18 @@ class TestTwoToolRounds:
         gen = make_generator()
         tm = make_tool_manager("result")
 
-        with patch.object(gen.client.messages, "create",
-                          side_effect=[make_tool_use_response(tool_id="t1"),
-                                       make_tool_use_response(tool_id="t2"),
-                                       make_text_response("complete answer")]) as mock_create:
-            result = gen.generate_response("compare courses", tools=TOOLS, tool_manager=tm)
+        with patch.object(
+            gen.client.messages,
+            "create",
+            side_effect=[
+                make_tool_use_response(tool_id="t1"),
+                make_tool_use_response(tool_id="t2"),
+                make_text_response("complete answer"),
+            ],
+        ) as mock_create:
+            result = gen.generate_response(
+                "compare courses", tools=TOOLS, tool_manager=tm
+            )
 
         assert result == "complete answer"
         assert mock_create.call_count == 3
@@ -124,10 +158,15 @@ class TestTwoToolRounds:
         gen = make_generator()
         tm = make_tool_manager("result")
 
-        with patch.object(gen.client.messages, "create",
-                          side_effect=[make_tool_use_response(tool_id="t1"),
-                                       make_tool_use_response(tool_id="t2"),
-                                       make_text_response()]) as mock_create:
+        with patch.object(
+            gen.client.messages,
+            "create",
+            side_effect=[
+                make_tool_use_response(tool_id="t1"),
+                make_tool_use_response(tool_id="t2"),
+                make_text_response(),
+            ],
+        ) as mock_create:
             gen.generate_response("compare courses", tools=TOOLS, tool_manager=tm)
 
         third_call_messages = mock_create.call_args_list[2].kwargs["messages"]
@@ -143,10 +182,15 @@ class TestTwoToolRounds:
         gen = make_generator()
         tm = make_tool_manager()
 
-        with patch.object(gen.client.messages, "create",
-                          side_effect=[make_tool_use_response(),
-                                       make_tool_use_response(),
-                                       make_text_response()]) as mock_create:
+        with patch.object(
+            gen.client.messages,
+            "create",
+            side_effect=[
+                make_tool_use_response(),
+                make_tool_use_response(),
+                make_text_response(),
+            ],
+        ) as mock_create:
             gen.generate_response("compare courses", tools=TOOLS, tool_manager=tm)
 
         # Both intermediate calls should have tools attached
@@ -160,10 +204,15 @@ class TestRoundCapEnforced:
         tm = make_tool_manager()
 
         # Claude keeps returning tool_use but loop must stop after 2 rounds
-        with patch.object(gen.client.messages, "create",
-                          side_effect=[make_tool_use_response(),
-                                       make_tool_use_response(),
-                                       make_text_response("capped")]) as mock_create:
+        with patch.object(
+            gen.client.messages,
+            "create",
+            side_effect=[
+                make_tool_use_response(),
+                make_tool_use_response(),
+                make_text_response("capped"),
+            ],
+        ) as mock_create:
             result = gen.generate_response("multi search", tools=TOOLS, tool_manager=tm)
 
         assert mock_create.call_count == 3
@@ -177,8 +226,9 @@ class TestToolExecutionError:
         tm = make_tool_manager()
         tm.execute_tool.side_effect = RuntimeError("vector store unavailable")
 
-        with patch.object(gen.client.messages, "create",
-                          return_value=make_tool_use_response()) as mock_create:
+        with patch.object(
+            gen.client.messages, "create", return_value=make_tool_use_response()
+        ) as mock_create:
             result = gen.generate_response("find course", tools=TOOLS, tool_manager=tm)
 
         # Only the initial API call was made; loop broke after exception
@@ -187,11 +237,18 @@ class TestToolExecutionError:
 
     def test_tool_not_found_string_is_treated_as_valid_result(self):
         gen = make_generator()
-        tm = make_tool_manager("Tool 'unknown' not found")  # ToolManager returns string, no raise
+        tm = make_tool_manager(
+            "Tool 'unknown' not found"
+        )  # ToolManager returns string, no raise
 
-        with patch.object(gen.client.messages, "create",
-                          side_effect=[make_tool_use_response(tool_name="unknown"),
-                                       make_text_response("graceful response")]):
+        with patch.object(
+            gen.client.messages,
+            "create",
+            side_effect=[
+                make_tool_use_response(tool_name="unknown"),
+                make_text_response("graceful response"),
+            ],
+        ):
             result = gen.generate_response("find X", tools=TOOLS, tool_manager=tm)
 
         assert result == "graceful response"
@@ -201,9 +258,12 @@ class TestNoToolsProvided:
     def test_single_api_call_no_tools_in_params(self):
         gen = make_generator()
 
-        with patch.object(gen.client.messages, "create",
-                          return_value=make_text_response("direct")) as mock_create:
-            result = gen.generate_response("what is python?", tools=None, tool_manager=None)
+        with patch.object(
+            gen.client.messages, "create", return_value=make_text_response("direct")
+        ) as mock_create:
+            result = gen.generate_response(
+                "what is python?", tools=None, tool_manager=None
+            )
 
         assert result == "direct"
         assert mock_create.call_count == 1
@@ -213,7 +273,9 @@ class TestNoToolsProvided:
         gen = make_generator()
         tm = make_tool_manager()
 
-        with patch.object(gen.client.messages, "create", return_value=make_text_response()):
+        with patch.object(
+            gen.client.messages, "create", return_value=make_text_response()
+        ):
             gen.generate_response("what is python?", tools=None, tool_manager=tm)
 
         tm.execute_tool.assert_not_called()
@@ -224,8 +286,9 @@ class TestConversationHistory:
         gen = make_generator()
         history = "User: hello\nAssistant: hi"
 
-        with patch.object(gen.client.messages, "create",
-                          return_value=make_text_response()) as mock_create:
+        with patch.object(
+            gen.client.messages, "create", return_value=make_text_response()
+        ) as mock_create:
             gen.generate_response("follow-up", conversation_history=history)
 
         system = mock_create.call_args.kwargs["system"]
@@ -235,8 +298,9 @@ class TestConversationHistory:
     def test_no_history_uses_base_system_prompt(self):
         gen = make_generator()
 
-        with patch.object(gen.client.messages, "create",
-                          return_value=make_text_response()) as mock_create:
+        with patch.object(
+            gen.client.messages, "create", return_value=make_text_response()
+        ) as mock_create:
             gen.generate_response("hello")
 
         system = mock_create.call_args.kwargs["system"]
